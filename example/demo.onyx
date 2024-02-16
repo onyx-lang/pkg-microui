@@ -1,0 +1,149 @@
+#load "./lib/packages.onyx"
+#load "./../module.onyx"
+#library_path "./.."
+
+use core {*}
+use microui { mu :: package }
+use raylib
+
+main :: () {
+    raylib.InitWindow(1200, 900, "Raylib Example");
+    raylib.SetTargetFPS(60);
+
+    ctx := new(mu.Context);
+    mu.init(ctx);
+    ctx.style.title_height = 36;
+    ctx.style.spacing = 8;
+
+    ctx.text_width = (_, msg) => {
+        font: raylib.Font;
+        raylib.GetFontDefault(&font);
+
+        m := string.to_cstr_on_stack(msg); 
+        v: raylib.Vector2;
+        raylib.MeasureTextEx(font, m, 20, 2, &v);
+        return cast(i32) v.x;
+    };
+    ctx.text_height = (_) => {
+        font: raylib.Font;
+        raylib.GetFontDefault(&font);
+        return font.baseSize * 2;
+    };
+
+    while !raylib.WindowShouldClose() {
+        mouse_pos := i32.[
+            raylib.GetMouseX(),
+            raylib.GetMouseY()
+        ];
+        mu.input_mousemove(ctx, mouse_pos.x, mouse_pos.y);
+        mu.input_scroll(ctx, 0, ~~(raylib.GetMouseWheelMove() * -30));
+
+        buttons_to_key := (#type struct {rl_button: raylib.MouseButton; mu_button: mu.MOUSE}).[
+            .{ .LEFT, .LEFT },
+            .{ .RIGHT, .RIGHT },
+            .{ .MIDDLE, .MIDDLE },
+        ];
+
+        for button in buttons_to_key {
+            if raylib.IsMouseButtonPressed(button.rl_button) {
+                mu.input_mousedown(ctx, mouse_pos.x, mouse_pos.y, button.mu_button);
+            }
+            elseif raylib.IsMouseButtonReleased(button.rl_button) {
+                mu.input_mouseup(ctx, mouse_pos.x, mouse_pos.y, button.mu_button);
+            }
+        }
+
+        {
+            text_input: [512] u8;
+            text_input_offset := 0;
+            while text_input_offset < sizeof typeof text_input {
+                ch := raylib.GetCharPressed();
+                if ch == 0 do break;
+                b: [4] u8;
+                w := encoding.utf8.encode_rune(b, ch);
+                memory.copy(&text_input[text_input_offset], w.data, w.count);
+                text_input_offset += w.count;
+            }
+
+            mu.input_text(ctx, text_input[0 .. text_input_offset]);
+        }
+
+        keys_to_check := (#type struct { rl_key: raylib.KeyboardKey; mu_key: mu.KEY; }).[
+            .{.LEFT_SHIFT, .SHIFT},
+            .{.RIGHT_SHIFT, .SHIFT},
+            .{.LEFT_CONTROL, .CTRL},
+            .{.RIGHT_CONTROL, .CTRL},
+            .{.LEFT_ALT, .ALT},
+            .{.RIGHT_ALT, .ALT},
+            .{.ENTER, .RETURN},
+            .{.KP_ENTER, .RETURN},
+            .{.BACKSPACE, .BACKSPACE}
+        ];
+
+        for key in keys_to_check {
+            if raylib.IsKeyPressed(key.rl_key) {
+                mu.input_keydown(ctx, key.mu_key);
+            }
+            elseif raylib.IsKeyReleased(key.rl_key) {
+                mu.input_keyup(ctx, key.mu_key);
+            }
+        }
+
+        mu.begin(ctx);
+
+        if mu.begin_window(ctx, "Test Window", .{200, 200, 300, 240}) != .NONE {
+            mu.label(ctx, "Working!");
+
+            #persist checked := false;
+            mu.checkbox(ctx, "Check me", &checked);
+            
+            #persist text: dyn_str;
+            mu.textbox(ctx, &text);
+
+            if mu.button(ctx, "Click me!") == .SUBMIT {
+                logf(.Info, "Clicked the button!");
+            }
+
+            #persist value: f32;
+            mu.slider(ctx, &value, 0, 10);
+
+            mu.text(ctx, "This is a test of a long string that should be wrapped correctly, but I have no way of testing that without typing a really long message so here it goes...\nThis is a very long message to test wrapping. Surely this is better than lorem ipsum right?");
+
+            mu.end_window(ctx);
+        }
+
+        mu.end(ctx);
+
+
+        raylib.BeginDrawing();
+        defer raylib.EndDrawing();
+
+        raylib.ClearBackground(.{20, 20, 24, 255});
+
+        command: &mu.Command = null;
+        while mu.next_command(ctx, &command) {
+            switch *command {
+                case .rect as &r {
+                    raylib.DrawRectangle(r.rect.x, r.rect.y, r.rect.w, r.rect.h, *cast(&raylib.Color) &r.color);
+                }
+
+                case .text as &t {
+                    raylib.DrawText(string.to_cstr_on_stack(t.text), t.pos.x, t.pos.y, 20, *cast(&raylib.Color) &t.color);
+                }
+
+                case .icon as &i {
+                    raylib.DrawRectangle(i.rect.x, i.rect.y, i.rect.w, i.rect.h, *cast(&raylib.Color) &i.color);
+                }
+
+                case .clip as &c {
+                    raylib.EndScissorMode();
+                    raylib.BeginScissorMode(c.rect.x, c.rect.y, c.rect.w, c.rect.h);
+                }
+
+                case #default {}
+            }
+        }
+    }
+
+    raylib.CloseWindow();
+}

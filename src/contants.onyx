@@ -1,0 +1,14 @@
+package microui
+
+// COMMANDLIST_SIZE     :: (256 * 1024)
+// ROOTLIST_SIZE        :: 32
+// CONTAINERSTACK_SIZE  :: 32
+// CLIPSTACK_SIZE       :: 32
+// IDSTACK_SIZE         :: 32
+// LAYOUTSTACK_SIZE     :: 16
+CONTAINERPOOL_SIZE   :: 48
+TREENODEPOOL_SIZE    :: 48
+MAX_WIDTHS           :: 16
+MAX_FMT              :: 127
+
+

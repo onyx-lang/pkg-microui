@@ -1,0 +1,30 @@
+package microui
+
+pool_init :: (ctx: &Context, items: [] PoolItem, id: Id) -> i32 {
+    f := ctx.frame;
+    n := -1;
+
+    for &item, index in items {
+        if item.last_update < f {
+            f = item.last_update;
+            n = index;
+        }
+    }
+
+    assert(n > -1, "Expected n > -1");
+    items[n].id = id;
+    pool_update(ctx, items, id);
+    return n;
+}
+
+pool_get  :: (ctx: &Context, items: [] PoolItem, id: Id) -> i32 {
+    for &item, index in items {
+        if item.id == id do return index;
+    }
+    
+    return -1;
+}
+
+pool_update :: (ctx: &Context, items: [] PoolItem, idx: i32) {
+    items[idx].last_update = ctx.frame;
+}

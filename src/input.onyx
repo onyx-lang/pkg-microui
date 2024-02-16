@@ -1,0 +1,36 @@
+package microui
+
+use core.string
+
+input_mousemove :: (ctx: &Context, x, y: i32) {
+    ctx.mouse_pos = Vec2.{x, y};
+}
+
+input_mousedown :: (ctx: &Context, x, y: i32, btn: MOUSE) {
+    input_mousemove(ctx, x, y);
+    ctx.mouse_down |= btn;
+    ctx.mouse_pressed |= btn;
+}
+
+input_mouseup :: (ctx: &Context, x, y: i32, btn: MOUSE) {
+    input_mousemove(ctx, x, y);
+    ctx.mouse_down = ~~(cast(u32) ctx.mouse_down & ~cast(u32) btn);
+}
+
+input_scroll  :: (ctx: &Context, x, y: i32) {
+    ctx.scroll_delta.x += x;
+    ctx.scroll_delta.y += y;
+}
+
+input_keydown :: (ctx: &Context, key: KEY) {
+    ctx.key_pressed |= key;
+    ctx.key_down |= key;
+}
+
+input_keyup :: (ctx: &Context, key: KEY) {
+    ctx.key_down = ~~(cast(u32) ctx.key_down & ~~ ~key);
+}
+
+input_text :: (ctx: &Context, text: str) {
+    string.append(&ctx.input_text, text);
+}

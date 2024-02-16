@@ -1,0 +1,484 @@
+package microui
+
+use core {
+    array,
+    string,
+    math,
+    memory,
+    conv
+}
+
+text :: (ctx: &Context, text: str) {
+    width := -1;
+    font := ctx.style.font;
+    color := ctx.style.colors[COLOR.TEXT];
+    layout_begin_column(ctx);
+    layout_row(ctx, 1, &width, ctx.text_height(font));
+
+    to_write := text;
+    while to_write {
+        r := layout_next(ctx); // get a new row
+        written := 0;
+        for ch, index in to_write {
+            if ch == ' ' || ch == '\n' {
+                w := ctx.text_width(font, to_write[0 .. index+1]);
+                if w > r.w && index != 0 do break;
+                written = index;
+            }
+
+            if ch == '\n' do break;
+        }
+
+        draw_text(ctx, font, to_write[0 .. written], .{ r.x, r.y }, color);
+        to_write = string.advance(to_write, written + 1);
+    }
+
+    layout_end_column(ctx);
+}
+
+label :: (ctx: &Context, text: str) {
+    draw_control_text(ctx, text, layout_next(ctx), .TEXT, 0);
+}
+
+button_ex :: (ctx: &Context, label: str, icon: ICON, opt: OPT) -> RES {
+    res: RES;
+
+    id := do {
+        if label do return get_id(ctx, label);
+        return get_any_id(ctx, icon);
+    };
+
+    r := layout_next(ctx);
+    update_control(ctx, id, r, opt);
+
+    if ctx.mouse_pressed & .LEFT && ctx.focus == id {
+        res |= .SUBMIT;
+    }
+
+    draw_control_frame(ctx, id, r, .BUTTON, opt);
+    if label do draw_control_text(ctx, label,r, .TEXT, opt);
+    if icon != .NONE do draw_icon(ctx, icon, r, ctx.style.colors[COLOR.TEXT]);
+    return res;
+}
+
+checkbox :: (ctx: &Context, label: str, state: &bool) -> RES {
+    res: RES;
+
+    id := get_any_id(ctx, state);
+    r  := layout_next(ctx);
+    box := Rect.{r.x, r.y, r.h, r.h};
+
+    update_control(ctx, id, r, 0);
+
+    if ctx.mouse_pressed & .LEFT && ctx.focus == id {
+        res |= .CHANGE;
+        *state = !*state;
+    }
+
+    draw_control_frame(ctx, id, box, .BASE, 0);
+    if *state do draw_icon(ctx, .CHECK, box, ctx.style.colors[COLOR.TEXT]);
+    r = Rect.{r.x + box.w, r.y, r.w - box.w, r.h};
+    draw_control_text(ctx, label, r, .TEXT, 0);
+}
+
+textbox_raw :: (ctx: &Context, buf: &dyn_str, id: Id, r: Rect, opt: OPT) -> RES {
+    res: RES;
+    update_control(ctx, id, r, opt | .HOLDFOCUS);
+
+    if ctx.focus == id {
+        if ctx.input_text.length > 0 {
+            string.append(buf, ctx.input_text);
+            res |= .CHANGE;
+        }
+
+        if ctx.key_pressed & .BACKSPACE {
+            if buf.length > 0 {
+                while defer buf.length > 0 && buf.data[buf.length - 1] & 0xc0 == 0x80 {
+                    buf.length -= 1;
+                }
+
+                res |= .CHANGE;
+            }
+        }
+
+        if ctx.key_pressed & .RETURN {
+            set_focus(ctx, 0);
+            res |= .SUBMIT;
+        }
+    }
+
+    draw_control_frame(ctx, id, r, .BASE, opt);
+    if ctx.focus == id {
+        color := ctx.style.colors[COLOR.TEXT];
+        font  := ctx.style.font;
+        textw := ctx.text_width(font, *buf);
+        texth := ctx.text_height(font);
+        ofx := r.w - ctx.style.padding - textw - 1;
+        textx := r.x + math.min(ofx, ctx.style.padding);
+        texty := r.y + (r.h - texth) / 2;
+        push_clip_rect(ctx, r);
+        draw_text(ctx, font, *buf, .{textx, texty}, color);
+        draw_rect(ctx, .{textx + textw, texty, 1, texth}, color);
+        pop_clip_rect(ctx);
+    } else {
+        draw_control_text(ctx, *buf, r, .TEXT, opt);
+    }
+
+    return res;
+}
+
+#local
+_number_textbox :: (ctx: &Context, value: &f32, r: Rect, id: Id) -> bool {
+    if ctx.mouse_pressed & .LEFT && ctx.key_down & .SHIFT && ctx.hover == id {
+        ctx.number_edit = id;
+        string.clear(&ctx.number_edit_buf);
+        conv.format(&ctx.number_edit_buf, "{.2}", *value);
+    }
+
+    if ctx.number_edit == id {
+        res := textbox_raw(ctx, &ctx.number_edit_buf, id, r, 0);
+        if res & .SUBMIT || ctx.focus == id {
+            *value = conv.parse(f32, ctx.number_edit_buf) ?? 0;
+            ctx.number_edit = 0;
+        } else {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+textbox_ex :: (ctx: &Context, buf: &dyn_str, opt: OPT) -> RES {
+    id := get_any_id(ctx, buf);
+    r := layout_next(ctx);
+    return textbox_raw(ctx, buf, id, r, opt);
+}
+
+slider_ex :: (ctx: &Context, value: &Real, low, high: Real, step: Real, fmt: str, opt: OPT) -> RES {
+    res: RES;
+
+    last := *value;
+    v := last;
+    id := get_any_id(ctx, value);
+    base := layout_next(ctx);
+
+    if _number_textbox(ctx, value, base, id) do return res;
+
+    update_control(ctx, id, base, opt);
+
+    if ctx.focus == id && (ctx.mouse_down | ctx.mouse_pressed) & .LEFT {
+        v = low + ~~(ctx.mouse_pos.x - base.x) * (high - low) / ~~base.w;
+        if step != 0 do v = ((v + step / 2) / step) * step;
+    }
+
+    v = math.clamp(v, low, high);
+    *value = v;
+    if last != v do res |= .CHANGE;
+
+    draw_control_frame(ctx, id, base, .BASE, opt);
+    w := ctx.style.thumb_size;
+    x := (v - low) * ~~(base.w - w) / (high - low);
+    thumb := Rect.{base.x + ~~x, base.y, w, base.h};
+    draw_control_frame(ctx, id, thumb, .BUTTON, opt);
+
+    buf: [512] u8;
+    draw_control_text(ctx, conv.format(buf, fmt, *value), base, .TEXT, opt);
+}
+
+number_ex :: (ctx: &Context, value: &Real, step: Real, fmt: str, opt: OPT) -> RES {
+    res: RES;
+
+    id := get_any_id(ctx, value);
+    base := layout_next(ctx);
+    last := *value;
+
+    if _number_textbox(ctx, value, base, id) do return res;
+
+    update_control(ctx, id, base, opt);
+
+    if ctx.focus == id && ctx.mouse_down == .LEFT {
+        *value += ~~ctx.mouse_delta.x * step;
+    }
+
+    if *value != last do res |= .CHANGE;
+
+    draw_control_frame(ctx, id, base, .BASE, opt);
+    buf: [128] u8;
+    draw_control_text(ctx, conv.format(buf, fmt, *value), base, .TEXT, opt);
+
+    return res;
+}
+
+#local
+_header :: (ctx: &Context, label: str, istreenode: bool, opt: OPT) -> RES {
+    id := get_id(ctx, label);
+    idx := pool_get(ctx, ctx.treenode_pool, id);
+
+    width := -1;
+    layout_row(ctx, 1, &width, 0);
+
+    active := idx >= 0;
+    expanded := !active if opt & .EXPANDED else active;
+
+    r := layout_next(ctx);
+
+    update_control(ctx, id, r, 0);
+
+    if ctx.mouse_pressed == .LEFT && ctx.focus == id {
+        active = !active;
+    }
+
+    if idx >= 0 {
+        if active do pool_update(ctx, ctx.treenode_pool, idx);
+        else      do memory.set(&ctx.treenode_pool[idx], 0, sizeof PoolItem);
+
+    } elseif active {
+        pool_init(ctx, ctx.treenode_pool, id);
+    }
+
+    if istreenode {
+        if ctx.hover == id do ctx->draw_frame(r, .BUTTONHOVER);
+    } else {
+        draw_control_frame(ctx, id, r, .BUTTON, 0);
+    }
+
+    draw_icon(
+        ctx, .EXPANDED if expanded else .COLLAPSED,
+        .{r.x, r.y, r.h, r.h}, ctx.style.colors[COLOR.TEXT]
+    );
+
+    r.x += r.h - ctx.style.padding;
+    r.w -= r.h - ctx.style.padding;
+    draw_control_text(ctx, label, r, .TEXT, 0);
+
+    return .ACTIVE if expanded else .NONE;
+}
+
+header_ex :: (ctx: &Context, label: str, opt: OPT) -> RES {
+    return _header(ctx, label, false, opt);
+}
+
+begin_treenode_ex :: (ctx: &Context, label: str, opt: OPT) -> RES {
+    res := _header(ctx, label, true, opt);
+    if res & .ACTIVE {
+        get_layout(ctx).indent += ctx.style.indent;
+        array.push(&ctx.id_stack, ctx.last_id);
+    }
+
+    return res;
+}
+
+end_treenode :: (ctx: &Context) {
+    get_layout(ctx).indent -= ctx.style.indent;
+    pop_id(ctx);
+}
+
+
+button  :: macro (ctx: &Context, label: str) => #this_package.button_ex(ctx, label, .NONE, .ALIGNCENTER);
+textbox :: macro (ctx: &Context, buf: &dyn_str) => #this_package.textbox_ex(ctx, buf, ~~0);
+slider  :: macro (ctx: &Context, value: &Real, low, high: Real) => #this_package.slider_ex(ctx, value, low, high, 0, "{.2}", .ALIGNCENTER);
+number  :: macro (ctx: &Context, value: &Real, step: Real) => #this_package.number_ex(ctx, value, step, "{.2}", .ALIGNCENTER);
+header  :: macro (ctx: &Context, label: str) => #this_package.header_ex(ctx, label, ~~0);
+begin_treenode :: macro (ctx: &Context, label: str) => #this_package.begin_treenode_ex(ctx, label, ~~0);
+begin_window :: macro (ctx: &Context, title: str, rect: Rect) => #this_package.begin_window_ex(ctx, title, rect, ~~0);
+begin_panel :: macro (ctx: &Context, name: str) => #this_package.begin_panel_ex(ctx, name, ~~0);
+
+
+#local
+scrollbars :: (ctx: &Context, cnt: &Container, body: &Rect) {
+    sz := ctx.style.scrollbar_size;
+    cs := cnt.content_size;
+    cs.x += ctx.style.padding * 2;
+    cs.y += ctx.style.padding * 2;
+    push_clip_rect(ctx, *body);
+
+    if (cs.y > cnt.body.h) { body.w -= sz; }
+    if (cs.x > cnt.body.w) { body.h -= sz; }
+
+    _scrollbar(ctx, cnt, body, cs, [a](&a.x), [a](&a.y), [a](&a.w), [a](&a.h), "!scrollbary");
+    _scrollbar(ctx, cnt, body, cs, [a](&a.y), [a](&a.x), [a](&a.h), [a](&a.w), "!scrollbarx");
+    pop_clip_rect(ctx);
+
+    // If this is not the most cursed thing I have ever written...
+    _scrollbar :: macro (ctx: &Context, cnt: &Container, body: &Rect, cs: Vec2, x, y, w, h: Code, name: str) {
+        max_scroll := *#unquote y(cs) - *#unquote h(body);
+
+        if max_scroll > 0 && *#unquote h(body) > 0 {
+            id := get_id(ctx, name);
+
+            base := *body;
+            v1 := *#unquote x(body) + *#unquote w(body);
+            v2 := ctx.style.scrollbar_size;
+
+            *(#unquote x(base)) = v1;
+            *(#unquote w(base)) = v2;
+
+            update_control(ctx, id, base, 0);
+            if ctx.focus == id && ctx.mouse_down == .LEFT {
+                *(#unquote y(cnt.scroll)) += *#unquote y(ctx.mouse_delta) * *#unquote y(cs) / *#unquote h(base);
+            }
+
+            *(#unquote y(cnt.scroll)) = math.clamp(*#unquote y(cnt.scroll), 0, max_scroll);
+
+            ctx->draw_frame(base, .SCROLLBASE);
+            thumb := base;
+            *(#unquote h(thumb)) = math.max(ctx.style.thumb_size, *#unquote h(base) * *#unquote h(body) / *#unquote y(cs));
+            *(#unquote y(thumb)) += *#unquote y(cnt.scroll) * (*#unquote h(base) - *#unquote h(thumb)) / max_scroll;
+            ctx->draw_frame(thumb, .SCROLLTHUMB);
+
+            if mouse_over(ctx, *body) do ctx.scroll_target = cnt;
+        } else {
+            *(#unquote y(cnt.scroll)) = 0;
+        }
+    }
+}
+
+#local
+push_container_body :: (ctx: &Context, cnt: &Container, body_: Rect, opt: OPT) {
+    body := body_;
+    if !(opt & .NOSCROLL) do scrollbars(ctx, cnt, &body);
+    push_layout(ctx, expand_rect(body, -ctx.style.padding), cnt.scroll);
+    cnt.body = body;
+}
+
+#local
+begin_root_container :: (ctx: &Context, cnt: &Container) {
+    array.push(&ctx.container_stack, cnt);
+    array.push(&ctx.root_list, cnt);
+    cnt.head = push_jump(ctx, 0);
+
+    if rect_overlaps_vec2(cnt.rect, ctx.mouse_pos) &&
+        (!ctx.next_hover_root || cnt.zindex > ctx.next_hover_root.zindex)
+    {
+        ctx.next_hover_root = cnt;
+    }
+
+    array.push(&ctx.clip_stack, unclipped_rect);
+}
+
+#local
+end_root_container :: (ctx: &Context) {
+    cnt := get_current_container(ctx)?;
+    cnt.tail = push_jump(ctx, 0);
+    ctx.command_list[cnt.head] = .{ jump = .{ cnt.tail + 1 } };
+
+    pop_clip_rect(ctx);
+    pop_container(ctx);
+}
+
+begin_window_ex :: (ctx: &Context, title: str, rect: Rect, opt: OPT) -> RES {
+    rect_ := rect;
+
+    id := get_id(ctx, title);
+    cnt := _get_container(ctx, id, opt);
+    if cnt == null do return .NONE;
+    if !cnt.open do return .NONE;
+    array.push(&ctx.id_stack, id);
+
+    if cnt.rect.w == 0 do cnt.rect = rect;
+    begin_root_container(ctx, cnt);
+    rect_ = cnt.rect;
+    body := cnt.rect;
+
+    if !(opt & .NOFRAME) {
+        ctx->draw_frame(rect_, .WINDOWBG);
+    }
+
+    if !(opt & .NOTITLE) {
+        tr := rect_;
+        tr.h = ctx.style.title_height;
+        ctx->draw_frame(tr, .TITLEBG);
+
+        {
+            id := get_id(ctx, "!title");
+            update_control(ctx, id, tr, opt);
+            draw_control_text(ctx, title, tr, .TITLETEXT, opt);
+            if id == ctx.focus && ctx.mouse_down == .LEFT {
+                cnt.rect.x += ctx.mouse_delta.x;
+                cnt.rect.y += ctx.mouse_delta.y;
+            }
+
+            body.y += tr.h;
+            body.h -= tr.h;
+        }
+
+        if !(opt & .NOCLOSE) {
+            id := get_id(ctx, "!close");
+            r := Rect.{tr.x + tr.w - tr.h, tr.y, tr.h, tr.h};
+            tr.w -= r.w;
+            draw_icon(ctx, .CLOSE, r, ctx.style.colors[COLOR.TITLETEXT]);
+            update_control(ctx, id, r, opt);
+            if ctx.mouse_pressed & .LEFT && id == ctx.focus {
+                cnt.open = false;
+            }
+        }
+    }
+
+    push_container_body(ctx, cnt, body, opt);
+
+    if !(opt & .NORESIZE) {
+        sz := ctx.style.title_height;
+        id := get_id(ctx, "!resize,");
+        r := Rect.{rect_.x + rect_.w - sz, rect_.y + rect_.h - sz, sz, sz};
+        update_control(ctx, id, r, opt);
+        if id == ctx.focus && ctx.mouse_down == .LEFT {
+            cnt.rect.w = math.max(96, cnt.rect.w + ctx.mouse_delta.x);
+            cnt.rect.h = math.max(64, cnt.rect.h + ctx.mouse_delta.y);
+        }
+    }
+
+    if opt & .AUTOSIZE {
+        r := get_layout(ctx).body;
+        cnt.rect.w = cnt.content_size.x + cnt.rect.w - r.w;
+        cnt.rect.h = cnt.content_size.y + cnt.rect.h - r.h;
+    }
+
+    if opt & .POPUP && ctx.mouse_pressed != 0 && ctx.hover_root != cnt {
+        cnt.open = false;
+    }
+
+    push_clip_rect(ctx, cnt.body);
+    return .ACTIVE;
+}
+
+end_window :: (ctx: &Context) {
+    pop_clip_rect(ctx);
+    end_root_container(ctx);
+}
+
+open_popup :: (ctx: &Context, name: str) {
+    cnt := get_container(ctx, name);
+    ctx.hover_root = cnt;
+    ctx.next_hover_root = cnt;
+    cnt.rect = Rect.{ctx.mouse_pos.x, ctx.mouse_pos.y, 1, 1};
+    cnt.open = true;
+    bring_to_front(ctx, cnt);
+}
+
+begin_popup :: (ctx: &Context, name: str) -> RES {
+    opt := OPT.POPUP | .AUTOSIZE | .NORESIZE | .NOSCROLL | .NOTITLE | .CLOSED;
+    begin_window_ex(ctx, name, .{}, opt);
+}
+
+end_popup :: (ctx: &Context) {
+    end_window(ctx);
+}
+
+begin_panel_ex :: (ctx: &Context, name: str, opt: OPT) {
+    push_id(ctx, name);
+
+    cnt := _get_container(ctx, ctx.last_id, opt);
+    cnt.rect = layout_next(ctx);
+    if !(opt & .NOFRAME) {
+        ctx->draw_frame(cnt.rect, .PANELBG);
+    }
+
+    array.push(&ctx.container_stack, cnt);
+    push_container_body(ctx, cnt, cnt.rect, opt);
+    push_clip_rect(ctx, cnt.body);
+}
+
+end_panel :: (ctx: &Context) {
+    pop_clip_rect(ctx);
+    pop_container(ctx);
+}

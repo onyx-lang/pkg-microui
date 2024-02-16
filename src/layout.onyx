@@ -1,0 +1,95 @@
+package microui
+
+use core {
+    array,
+    memory,
+    math
+}
+
+layout_begin_column :: (ctx: &Context) {
+    push_layout(ctx, layout_next(ctx), .{0, 0});
+}
+
+layout_end_column :: (ctx: &Context) {
+    b := get_layout(ctx);
+    array.pop(&ctx.layout_stack);
+    a := get_layout(ctx);
+    a.position.x = math.max(a.position.x, b.position.x + b.body.x - a.body.x);
+    a.next_row = math.max(a.next_row, b.next_row + b.body.y - a.body.y);
+    a.max.x = math.max(a.max.x, b.max.x);
+    a.max.y = math.max(a.max.y, b.max.y); 
+}
+
+layout_row :: (ctx: &Context, items: i32, widths: [&] i32, height: i32) {
+    layout := get_layout(ctx);
+    if widths {
+        assert(items < MAX_WIDTHS, "items < MAX_WIDTHS");
+        memory.copy(&layout.widths, widths, items * sizeof i32);
+    }
+    layout.items = items;
+    layout.position = Vec2.{layout.indent, layout.next_row};
+    layout.size.y = height;
+    layout.item_index = 0;
+}
+
+layout_width :: (ctx: &Context, width: i32) {
+    get_layout(ctx).size.x = width;
+}
+
+layout_height :: (ctx: &Context, height: i32) {
+    get_layout(ctx).size.y = height;
+}
+
+layout_set_next :: (ctx: &Context, r: Rect, relative: bool) {
+    layout := get_layout(ctx);
+    layout.next = r;
+    layout.next_type = .Relative if relative else .Absolute;
+}
+
+layout_next :: (ctx: &Context) -> Rect {
+    layout := get_layout(ctx);
+    style := &ctx.style;
+
+    res: Rect;
+
+    if layout.next_type != .None {
+        type := layout.next_type;
+        layout.next_type = .None;
+        res = layout.next;
+        if type == .Absolute {
+            ctx.last_rect = res;
+            return res;
+        }
+
+    } else {
+        if layout.item_index == layout.items {
+            layout_row(ctx, layout.items, null, layout.size.y);
+        }
+
+        res.x = layout.position.x;
+        res.y = layout.position.y;
+
+        res.w = layout.widths[layout.item_index] if layout.items > 0 else layout.size.x;
+        res.h = layout.size.y;
+
+        if res.w == 0 do res.w = style.size.x + style.padding * 2;
+        if res.h == 0 do res.h = style.size.y + style.padding * 2;
+        if res.w <  0 do res.w += layout.body.w - res.x + 1;
+        if res.h <  0 do res.h += layout.body.h - res.y + 1;
+
+        layout.item_index += 1;
+    }
+
+    layout.position.x += res.w + style.spacing;
+    layout.next_row = math.max(layout.next_row, res.y + res.h + style.spacing);
+
+    res.x += layout.body.x;
+    res.y += layout.body.y;
+
+    layout.max.x = math.max(layout.max.x, res.x + res.w);
+    layout.max.y = math.max(layout.max.y, res.y + res.h);
+
+    ctx.last_rect = res;
+    return res;
+}
+

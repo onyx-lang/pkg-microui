@@ -1,0 +1,17 @@
+package {
+    name "microui-example" 
+    author "Brendan Hansen" 
+    url "" 
+    description "MicroUI Example" 
+    version "0.0.1" 
+}
+
+config {
+    dependency_source_path "./lib" 
+    dependency_binary_path "./bin" 
+}
+
+dependencies {
+    raylib "0.0.5" git="http://github.com/onyx-lang/pkg-raylib" 
+}
+
