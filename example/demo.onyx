@@ -91,7 +91,7 @@ main :: () {
 
         mu.begin(ctx);
 
-        if mu.begin_window(ctx, "Test Window", .{200, 200, 300, 240}) != .NONE {
+        if mu.begin_window(ctx, "Test Window", .{200, 200, 600, 480}) != .NONE {
             mu.label(ctx, "Working!");
 
             #persist checked := false;
@@ -109,6 +109,11 @@ main :: () {
 
             mu.text(ctx, "This is a test of a long string that should be wrapped correctly, but I have no way of testing that without typing a really long message so here it goes...\nThis is a very long message to test wrapping. Surely this is better than lorem ipsum right?");
 
+            mu.end_window(ctx);
+        }
+
+        if mu.begin_window(ctx, "Inner Window", .{50, 50, 100, 100}) != .NONE {
+            mu.label(ctx, "This is the inner window!");
             mu.end_window(ctx);
         }
 

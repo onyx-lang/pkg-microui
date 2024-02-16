@@ -13,7 +13,7 @@ pool_init :: (ctx: &Context, items: [] PoolItem, id: Id) -> i32 {
 
     assert(n > -1, "Expected n > -1");
     items[n].id = id;
-    pool_update(ctx, items, id);
+    pool_update(ctx, items, n);
     return n;
 }
 

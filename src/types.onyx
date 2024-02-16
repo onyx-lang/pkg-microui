@@ -79,7 +79,7 @@ Stack :: struct (T: type_expr, N: i32) {
 
 Id :: u32
 Real :: f32
-Font :: #distinct i64
+Font :: rawptr
 
 Vec2 :: struct {x, y: i32}
 

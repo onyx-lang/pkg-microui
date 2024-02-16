@@ -140,7 +140,7 @@ bring_to_front :: (ctx: &Context, cnt: &Container) {
     unclipped_rect :: Rect.{0, 0, 0x1000000, 0x1000000};
 
     default_style :: () => Style.{
-        Font.{0},
+        null,
         Vec2.{68, 10}, // Size
         5, // Padding
         4, // Spacing
