@@ -9,11 +9,10 @@ use core {
 }
 
 text :: (ctx: &Context, text: str) {
-    width := -1;
     font := ctx.style.font;
     color := ctx.style.colors[COLOR.TEXT];
     layout_begin_column(ctx);
-    layout_row(ctx, 1, &width, ctx.text_height(font));
+    layout_row(ctx, .[-1], ctx.text_height(font));
 
     to_write := text;
     while to_write {
@@ -214,8 +213,7 @@ _header :: (ctx: &Context, label: str, istreenode: bool, opt: OPT) -> RES {
     id := get_id(ctx, label);
     idx := pool_get(ctx, ctx.treenode_pool, id);
 
-    width := -1;
-    layout_row(ctx, 1, &width, 0);
+    layout_row(ctx, .[-1], 0);
 
     active := idx >= 0;
     expanded := !active if opt & .EXPANDED else active;
@@ -446,6 +444,14 @@ end_window :: (ctx: &Context) {
     end_root_container(ctx);
 }
 
+window :: macro (ctx: &Context, title: str, rect: Rect, opt: OPT, body: Code) {
+    if #this_package.begin_window_ex(ctx, title, rect, opt) != .NONE {
+        #unquote body;
+
+        #this_package.end_window(ctx);
+    }
+}
+
 open_popup :: (ctx: &Context, name: str) {
     cnt := get_container(ctx, name);
     ctx.hover_root = cnt;
@@ -462,6 +468,14 @@ begin_popup :: (ctx: &Context, name: str) -> RES {
 
 end_popup :: (ctx: &Context) {
     end_window(ctx);
+}
+
+popup :: macro (ctx: &Context, name: str, body: Code) {
+    if #this_package.begin_popup(ctx, name) != .NONE {
+        #unquote body;
+
+        #this_package.end_popup(ctx);
+    }
 }
 
 begin_panel_ex :: (ctx: &Context, name: str, opt: OPT) {
@@ -481,4 +495,12 @@ begin_panel_ex :: (ctx: &Context, name: str, opt: OPT) {
 end_panel :: (ctx: &Context) {
     pop_clip_rect(ctx);
     pop_container(ctx);
+}
+
+panel :: macro (ctx: &Context, name: str, opt: OPT, body: Code) {
+    if #this_package.begin_panel(ctx, name, opt) != .NONE {
+        #unquote body;
+
+        #this_package.end_panel(ctx);
+    }
 }

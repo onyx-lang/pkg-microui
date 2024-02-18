@@ -209,8 +209,7 @@ bring_to_front :: (ctx: &Context, cnt: &Container) {
         layout.max  = Vec2.{-0x1000000, -0x1000000};
         array.push(&ctx.layout_stack, layout);
 
-        width := -1;
-        layout_row(ctx, 1, &width, 0);
+        layout_row(ctx, .[-1], 0);
     }
 
     get_layout :: (ctx: &Context) -> &Layout {

@@ -20,13 +20,14 @@ layout_end_column :: (ctx: &Context) {
     a.max.y = math.max(a.max.y, b.max.y); 
 }
 
-layout_row :: (ctx: &Context, items: i32, widths: [&] i32, height: i32) {
+layout_row :: (ctx: &Context, widths: [] i32, height: i32) {
     layout := get_layout(ctx);
     if widths {
-        assert(items < MAX_WIDTHS, "items < MAX_WIDTHS");
-        memory.copy(&layout.widths, widths, items * sizeof i32);
+        assert(widths.length < MAX_WIDTHS, "items < MAX_WIDTHS");
+        memory.copy(&layout.widths, widths.data, widths.length * sizeof i32);
+        layout.items = widths.length;
     }
-    layout.items = items;
+    
     layout.position = Vec2.{layout.indent, layout.next_row};
     layout.size.y = height;
     layout.item_index = 0;
@@ -63,7 +64,7 @@ layout_next :: (ctx: &Context) -> Rect {
 
     } else {
         if layout.item_index == layout.items {
-            layout_row(ctx, layout.items, null, layout.size.y);
+            layout_row(ctx, .[], layout.size.y);
         }
 
         res.x = layout.position.x;

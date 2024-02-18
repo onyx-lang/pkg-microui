@@ -1,6 +1,7 @@
 package microui
 
 use core.array
+use core.iter
 
 push_command :: (ctx: &Context) -> (&Command, i32) {
     cmd := array.alloc_one(&ctx.command_list);
@@ -22,6 +23,19 @@ next_command :: (ctx: &Context, cmd: & &Command) -> bool {
     }
 
     return false;
+}
+
+command_iterator :: (ctx: &Context) -> Iterator(&Command) {
+    return iter.generator(
+        &.{ ctx = ctx, command = cast(&Command) null },
+        x => {
+            if next_command(x.ctx, &x.command) {
+                return x.command, true;
+            }
+
+            return null, false;
+        }
+    );
 }
 
 set_clip :: (ctx: &Context, rect: Rect) {

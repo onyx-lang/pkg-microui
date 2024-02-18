@@ -31,6 +31,8 @@ main :: () {
     };
 
     while !raylib.WindowShouldClose() {
+        alloc.clear_temp_allocator();
+
         mouse_pos := i32.[
             raylib.GetMouseX(),
             raylib.GetMouseY()
@@ -91,7 +93,7 @@ main :: () {
 
         mu.begin(ctx);
 
-        if mu.begin_window(ctx, "Test Window", .{200, 200, 600, 480}) != .NONE {
+        mu.window(ctx, "Test Window", .{200, 200, 600, 480}, 0) {
             mu.label(ctx, "Working!");
 
             #persist checked := false;
@@ -108,13 +110,10 @@ main :: () {
             mu.slider(ctx, &value, 0, 10);
 
             mu.text(ctx, "This is a test of a long string that should be wrapped correctly, but I have no way of testing that without typing a really long message so here it goes...\nThis is a very long message to test wrapping. Surely this is better than lorem ipsum right?");
-
-            mu.end_window(ctx);
         }
 
-        if mu.begin_window(ctx, "Inner Window", .{50, 50, 100, 100}) != .NONE {
+        mu.window(ctx, "Inner Window", .{50, 50, 100, 100}, 0) {
             mu.label(ctx, "This is the inner window!");
-            mu.end_window(ctx);
         }
 
         mu.end(ctx);
@@ -125,8 +124,7 @@ main :: () {
 
         raylib.ClearBackground(.{20, 20, 24, 255});
 
-        command: &mu.Command = null;
-        while mu.next_command(ctx, &command) {
+        for command in mu.command_iterator(ctx) {
             switch *command {
                 case .rect as &r {
                     raylib.DrawRectangle(r.rect.x, r.rect.y, r.rect.w, r.rect.h, *cast(&raylib.Color) &r.color);
