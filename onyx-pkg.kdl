@@ -3,7 +3,7 @@ package {
     author "Brendan Hansen" 
     url "https://github.com/onyx-lang/pkg-microui" 
     description "Port of MicroUI found at github.com/rxi/microui" 
-    version "0.0.1" 
+    version "0.0.2" 
 }
 
 config {
@@ -12,7 +12,8 @@ config {
 }
 
 lsp {
-    mode "project"
-    working_dir "./example"
-    source_files "demo"
+    mode "project" 
+    working_dir "./example" 
+    source_files "demo" 
 }
+
