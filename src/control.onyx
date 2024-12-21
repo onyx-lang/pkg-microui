@@ -1,50 +1,50 @@
 package microui
 
 draw_control_frame :: (ctx: &Context, id: Id, rect: Rect, colorid: COLOR, opt: OPT) {
-    if opt & .NOFRAME do return;
-    colorid_ := colorid + ~~(2 if ctx.focus == id else 1 if ctx.hover == id else 0);
-    ctx->draw_frame(rect, colorid_);
+    if opt & .NOFRAME do return
+    colorid_ := colorid + ~~(2 if ctx.focus == id else 1 if ctx.hover == id else 0)
+    ctx->draw_frame(rect, colorid_)
 }
 
 draw_control_text :: (ctx: &Context, msg: str, rect: Rect, colorid: COLOR, opt: OPT) {
-    font := ctx.style.font;
-    tw := ctx.text_width(font, msg);
-    push_clip_rect(ctx, rect);
+    font := ctx.style.font
+    tw := ctx.text_width(font, msg)
+    push_clip_rect(ctx, rect)
 
-    y := rect.y + (rect.h - ctx.text_height(font)) / 2;
+    y := rect.y + (rect.h - ctx.text_height(font)) / 2
     x := do {
-        if opt & .ALIGNCENTER do return rect.x + (rect.w - tw) / 2;
-        if opt & .ALIGNRIGHT  do return rect.x + rect.w - tw - ctx.style.padding;
-        return rect.x + ctx.style.padding;
-    };
+        if opt & .ALIGNCENTER do return rect.x + (rect.w - tw) / 2
+        if opt & .ALIGNRIGHT  do return rect.x + rect.w - tw - ctx.style.padding
+        return rect.x + ctx.style.padding
+    }
 
-    draw_text(ctx, font, msg, .{x, y}, ctx.style.colors[colorid]);
-    pop_clip_rect(ctx);
+    draw_text(ctx, font, msg, .{x, y}, ctx.style.colors[colorid])
+    pop_clip_rect(ctx)
 }
 
 mouse_over :: (ctx: &Context, rect: Rect) -> bool {
     return rect_overlaps_vec2(rect, ctx.mouse_pos) &&
            rect_overlaps_vec2(get_clip_rect(ctx), ctx.mouse_pos) &&
-           in_hover_root(ctx);
+           in_hover_root(ctx)
 }
 
 update_control :: (ctx: &Context, id: Id, rect: Rect, opt: OPT) {
-    mouseover := mouse_over(ctx, rect);
+    mouseover := mouse_over(ctx, rect)
 
-    if ctx.focus == id do ctx.updated_focus = true;
-    if opt & .NOINTERACT do return;
-    if mouseover && ctx.mouse_down == 0 do ctx.hover = id;
+    if ctx.focus == id do ctx.updated_focus = true
+    if opt & .NOINTERACT do return
+    if mouseover && ctx.mouse_down == 0 do ctx.hover = id
 
     if ctx.focus == id {
-        if ctx.mouse_pressed != 0 && !mouseover do set_focus(ctx, 0);
-        if ctx.mouse_down == 0 && !(opt & .HOLDFOCUS) do set_focus(ctx, 0);
+        if ctx.mouse_pressed != 0 && !mouseover do set_focus(ctx, 0)
+        if ctx.mouse_down == 0 && !(opt & .HOLDFOCUS) do set_focus(ctx, 0)
     }
 
     if ctx.hover == id {
         if ctx.mouse_pressed != 0 {
-            set_focus(ctx, id);
+            set_focus(ctx, id)
         } elseif !mouseover {
-            ctx.hover = 0;
+            ctx.hover = 0
         }
     }
 }

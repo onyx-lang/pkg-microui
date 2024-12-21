@@ -1,75 +1,72 @@
 package microui
 
-use core.array
-use core.iter
-
 push_command :: (ctx: &Context) -> (&Command, i32) {
-    cmd := array.alloc_one(&ctx.command_list);
-    return cmd, ctx.command_list.length - 1;
+    cmd := Array.alloc_one(&ctx.command_list)
+    return cmd, ctx.command_list.length - 1
 }
 
 next_command :: (ctx: &Context, cmd: & &Command) -> bool {
     if *cmd {
-        *cmd = cast([&] Command) *cmd + 1;
+        *cmd = cast([&] Command) *cmd + 1
     } else {
-        *cmd = &ctx.command_list[0];
+        *cmd = &ctx.command_list[0]
     }
 
     // TODO: double check this
     while *cmd < ctx.command_list.data + ctx.command_list.count {
-        if cmd.*.tag != .jump do return true;
-        target := cmd.*.jump?.dst_index;
-        *cmd = &ctx.command_list[target];
+        if cmd.*.tag != .jump do return true
+        target := cmd.*.jump?.dst_index
+        *cmd = &ctx.command_list[target]
     }
 
-    return false;
+    return false
 }
 
 command_iterator :: (ctx: &Context) -> Iterator(&Command) {
-    return iter.generator(
+    return Iterator.generator(
         &.{ ctx = ctx, command = cast(&Command) null },
         x => {
             if next_command(x.ctx, &x.command) {
-                return Optional.make(x.command);
+                return Optional.make(x.command)
             }
 
-            return .None;
+            return .None
         }
-    );
+    )
 }
 
 set_clip :: (ctx: &Context, rect: Rect) {
-    cmd := push_command(ctx);
-    cmd.* = .{ clip = .{ rect = rect } };
+    cmd := push_command(ctx)
+    cmd.* = .{ clip = .{ rect = rect } }
 }
 
 draw_rect :: (ctx: &Context, rect: Rect, color: Color) {
-    r := intersect_rects(rect, get_clip_rect(ctx));
+    r := intersect_rects(rect, get_clip_rect(ctx))
     if rect.w > 0 && rect.h > 0 {
-        cmd := push_command(ctx);
-        cmd.* = .{ rect = .{ r, color } };
+        cmd := push_command(ctx)
+        cmd.* = .{ rect = .{ r, color } }
     }
 }
 
 draw_box :: (ctx: &Context, rect: Rect, color: Color) {
-    draw_rect(ctx, Rect.{rect.x + 1, rect.y, rect.w - 2, 1}, color);
-    draw_rect(ctx, Rect.{rect.x + 1, rect.y + rect.h - 1, rect.w - 2, 1}, color);
-    draw_rect(ctx, Rect.{rect.x, rect.y, 1, rect.h}, color);
-    draw_rect(ctx, Rect.{rect.x + rect.w - 1, rect.y, 1, rect.h}, color);
+    draw_rect(ctx, Rect.{rect.x + 1, rect.y, rect.w - 2, 1}, color)
+    draw_rect(ctx, Rect.{rect.x + 1, rect.y + rect.h - 1, rect.w - 2, 1}, color)
+    draw_rect(ctx, Rect.{rect.x, rect.y, 1, rect.h}, color)
+    draw_rect(ctx, Rect.{rect.x + rect.w - 1, rect.y, 1, rect.h}, color)
 }
 
 draw_text :: (ctx: &Context, font: Font, msg: [] u8, pos: Vec2, color: Color) {
     rect := Rect.{
         pos.x, pos.y, ctx.text_width(font, msg), ctx.text_height(font)
-    };
-
-    clipped := check_clip(ctx, rect);
-    switch clipped {
-        case .ALL do return;
-        case .PART do set_clip(ctx, get_clip_rect(ctx));
     }
 
-    cmd := push_command(ctx);
+    clipped := check_clip(ctx, rect)
+    switch clipped {
+        case .ALL do return
+        case .PART do set_clip(ctx, get_clip_rect(ctx))
+    }
+
+    cmd := push_command(ctx)
     cmd.* = .{
         text = .{
             pos = pos,
@@ -77,30 +74,30 @@ draw_text :: (ctx: &Context, font: Font, msg: [] u8, pos: Vec2, color: Color) {
             font = font,
             text = ctx.text_pool->add(msg)
         }
-    };
+    }
 
     if clipped != .NONE {
-        set_clip(ctx, unclipped_rect);
+        set_clip(ctx, unclipped_rect)
     }
 }
 
 draw_icon :: (ctx: &Context, id: ICON, rect: Rect, color: Color) {
-    clipped := check_clip(ctx, rect);
+    clipped := check_clip(ctx, rect)
     switch clipped {
-        case .ALL do return;
-        case .PART do set_clip(ctx, get_clip_rect(ctx));
+        case .ALL do return
+        case .PART do set_clip(ctx, get_clip_rect(ctx))
     }
 
-    cmd := push_command(ctx);
+    cmd := push_command(ctx)
     cmd.* = .{
         icon = .{
             id = id,
             rect = rect,
             color = color,
         }
-    };
+    }
 
     if clipped != .NONE {
-        set_clip(ctx, unclipped_rect);
+        set_clip(ctx, unclipped_rect)
     }
 }

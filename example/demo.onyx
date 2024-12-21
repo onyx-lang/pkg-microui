@@ -1,8 +1,5 @@
-//+optional-semicolons
-
-#load "./lib/packages.onyx"
-#load "./../module.onyx"
-#library_path "./.."
+#load "lib/packages.onyx"
+#load "../module.onyx"
 
 use core {*}
 use microui { mu :: package }
@@ -17,20 +14,19 @@ main :: () {
     ctx.style.title_height = 36
     ctx.style.spacing = 8
 
-    ctx.text_width = (_, msg) => {
-        font: raylib.Font
-        raylib.GetFontDefault(&font)
+    font: raylib.Font
+    raylib.GetFontDefault(&font)
 
-        m := string.to_cstr_on_stack(msg);
+    ctx.text_width = (_, msg) use (font) => {
+        m := string.to_cstr_on_stack(msg)
         v: raylib.Vector2
         raylib.MeasureTextEx(font, m, 20, 2, &v)
         return cast(i32) v.x
-    };
-    ctx.text_height = (_) => {
-        font: raylib.Font
-        raylib.GetFontDefault(&font)
+    }
+
+    ctx.text_height = (_) use (font) => {
         return font.baseSize * 2
-    };
+    }
 
     while !raylib.WindowShouldClose() {
         alloc.clear_temp_allocator()
@@ -38,11 +34,11 @@ main :: () {
         mouse_pos := i32.[
             raylib.GetMouseX(),
             raylib.GetMouseY()
-        ];
+        ]
         mu.input_mousemove(ctx, mouse_pos.x, mouse_pos.y)
         mu.input_scroll(ctx, 0, ~~(raylib.GetMouseWheelMove() * -30))
 
-        buttons_to_key := (#type struct {rl_button: raylib.MouseButton; mu_button: mu.MOUSE}).[
+        buttons_to_key := (struct {rl_button: raylib.MouseButton; mu_button: mu.MOUSE}).[
             .{ .LEFT, .LEFT },
             .{ .RIGHT, .RIGHT },
             .{ .MIDDLE, .MIDDLE },
@@ -72,7 +68,7 @@ main :: () {
             mu.input_text(ctx, text_input[0 .. text_input_offset])
         }
 
-        keys_to_check := (#type struct { rl_key: raylib.KeyboardKey; mu_key: mu.KEY; }).[
+        keys_to_check := (struct { rl_key: raylib.KeyboardKey; mu_key: mu.KEY; }).[
             .{.LEFT_SHIFT, .SHIFT},
             .{.RIGHT_SHIFT, .SHIFT},
             .{.LEFT_CONTROL, .CTRL},
@@ -82,7 +78,7 @@ main :: () {
             .{.ENTER, .RETURN},
             .{.KP_ENTER, .RETURN},
             .{.BACKSPACE, .BACKSPACE}
-        ];
+        ]
 
         for key in keys_to_check {
             if raylib.IsKeyPressed(key.rl_key) {

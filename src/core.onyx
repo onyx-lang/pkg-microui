@@ -4,130 +4,130 @@ use runtime
 use core {*}
 
 init :: (ctx: &Context) {
-    ctx.draw_frame = default_draw_frame;
-    ctx.style = default_style();
-    ctx.text_pool = string.pool_make(512, context.allocator);
+    ctx.draw_frame = default_draw_frame
+    ctx.style = default_style()
+    ctx.text_pool = string.pool_make(512, context.allocator)
 }
 
 begin :: (ctx: &Context) {
-    assert(ctx.text_width != null_proc && ctx.text_height != null_proc, "Expected text_width and text_height to be set.");
-    array.clear(&ctx.command_list);
-    array.clear(&ctx.clip_stack);
-    array.clear(&ctx.root_list);
-    string.pool_flush(&ctx.text_pool);
-    ctx.scroll_target = null;
-    ctx.hover_root = ctx.next_hover_root;
-    ctx.next_hover_root = null;
-    ctx.mouse_delta.x = ctx.mouse_pos.x - ctx.last_mouse_pos.x;
-    ctx.mouse_delta.y = ctx.mouse_pos.y - ctx.last_mouse_pos.y;
-    ctx.frame += 1;
+    assert(ctx.text_width != null_proc && ctx.text_height != null_proc, "Expected text_width and text_height to be set.")
+    Array.clear(&ctx.command_list)
+    Array.clear(&ctx.clip_stack)
+    Array.clear(&ctx.root_list)
+    string.pool_flush(&ctx.text_pool)
+    ctx.scroll_target = null
+    ctx.hover_root = ctx.next_hover_root
+    ctx.next_hover_root = null
+    ctx.mouse_delta.x = ctx.mouse_pos.x - ctx.last_mouse_pos.x
+    ctx.mouse_delta.y = ctx.mouse_pos.y - ctx.last_mouse_pos.y
+    ctx.frame += 1
 }
 
 end :: (ctx: &Context) {
-    assert(ctx.container_stack.count == 0, "Expected empty container stack (did you forget to end a window?)");
-    assert(ctx.clip_stack.count == 0, "Expected empty clip stack (did you forget to pop a clip rect?)");
-    assert(ctx.id_stack.count == 0, "Expected empty id stack");
-    assert(ctx.layout_stack.count == 0, "Expected empty layout stack:width");
+    assert(ctx.container_stack.count == 0, "Expected empty container stack (did you forget to end a window?)")
+    assert(ctx.clip_stack.count == 0, "Expected empty clip stack (did you forget to pop a clip rect?)")
+    assert(ctx.id_stack.count == 0, "Expected empty id stack")
+    assert(ctx.layout_stack.count == 0, "Expected empty layout stack:width")
 
     if ctx.scroll_target {
-        ctx.scroll_target.scroll.x += ctx.scroll_delta.x;
-        ctx.scroll_target.scroll.y += ctx.scroll_delta.y;
+        ctx.scroll_target.scroll.x += ctx.scroll_delta.x
+        ctx.scroll_target.scroll.y += ctx.scroll_delta.y
     }
 
-    if !ctx.updated_focus do ctx.focus = 0;
-    ctx.updated_focus = false;
+    if !ctx.updated_focus do ctx.focus = 0
+    ctx.updated_focus = false
 
     if ctx.mouse_pressed != 0 && ctx.next_hover_root && ctx.next_hover_root.zindex < ctx.last_zindex && ctx.next_hover_root.zindex >= 0 {
-        bring_to_front(ctx, ctx.next_hover_root);
+        bring_to_front(ctx, ctx.next_hover_root)
     }
 
-    ctx.key_pressed = 0;
-    ctx.mouse_pressed = 0;
-    ctx.scroll_delta = .{};
-    ctx.last_mouse_pos = ctx.mouse_pos;
-    array.clear(&ctx.input_text);
+    ctx.key_pressed = 0
+    ctx.mouse_pressed = 0
+    ctx.scroll_delta = .{}
+    ctx.last_mouse_pos = ctx.mouse_pos
+    Array.clear(&ctx.input_text)
 
-    array.sort(ctx.root_list, (a, b) => a.zindex - b.zindex);
+    Array.sort(ctx.root_list, (a, b) => a.zindex - b.zindex)
 
     for cnt, index in ctx.root_list {
         if index == 0 {
-            ctx.command_list[0] = .{ jump = .{ cnt.head + 1 } };
+            ctx.command_list[0] = .{ jump = .{ cnt.head + 1 } }
         } else {
-            prev := ctx.root_list[index - 1];
-            ctx.command_list[prev.tail] = .{ jump = .{ cnt.head + 1 } };
+            prev := ctx.root_list[index - 1]
+            ctx.command_list[prev.tail] = .{ jump = .{ cnt.head + 1 } }
         }
 
         if index == ctx.root_list.count - 1 {
-            ctx.command_list[cnt.tail] = .{ jump = .{ ctx.command_list.count } };
+            ctx.command_list[cnt.tail] = .{ jump = .{ ctx.command_list.count } }
         }
     }
 }
 
 set_focus :: (ctx: &Context, id: Id) {
-    ctx.focus = id;
-    ctx.updated_focus = true;
+    ctx.focus = id
+    ctx.updated_focus = true
 }
 
 get_id :: (ctx: &Context, data: [] u8) -> Id {
     res := do {
-        if !ctx.id_stack do return HASH_INITIAL;
-        return array.get(ctx.id_stack, -1);
-    };
+        if !ctx.id_stack do return HASH_INITIAL
+        return Array.get(ctx.id_stack, -1)
+    }
 
-    mu_hash(&res, data);
-    ctx.last_id = res;
-    return res;
+    mu_hash(&res, data)
+    ctx.last_id = res
+    return res
 }
 
 get_any_id :: macro (ctx: &Context, v: $T) -> Id {
-    _v := v;
-    return get_id(ctx, .{~~&_v, sizeof T});
+    _v := v
+    return get_id(ctx, .{~~&_v, sizeof T})
 }
 
 push_id :: (ctx: &Context, data: [] u8) {
-    array.push(&ctx.id_stack, get_id(ctx, data));
+    Array.push(&ctx.id_stack, get_id(ctx, data))
 }
 
 pop_id :: (ctx: &Context) {
-    array.pop(&ctx.id_stack);
+    Array.pop(&ctx.id_stack)
 }
 
 push_clip_rect :: (ctx: &Context, rect: Rect) {
-    last := get_clip_rect(ctx);
-    array.push(&ctx.clip_stack, intersect_rects(rect, last));
+    last := get_clip_rect(ctx)
+    Array.push(&ctx.clip_stack, intersect_rects(rect, last))
 }
 
 pop_clip_rect :: (ctx: &Context) {
-    array.pop(&ctx.clip_stack);
+    Array.pop(&ctx.clip_stack)
 }
 
 get_clip_rect :: (ctx: &Context) -> Rect {
-    assert(ctx.clip_stack.count > 0, "Expected at least one element on the clip stack.");
-    return array.get(ctx.clip_stack, -1);
+    assert(ctx.clip_stack.count > 0, "Expected at least one element on the clip stack.")
+    return Array.get(ctx.clip_stack, -1)
 }
 
 check_clip :: (ctx: &Context, r: Rect) -> CLIP {
-    cr := get_clip_rect(ctx);
+    cr := get_clip_rect(ctx)
     if  r.x > cr.x + cr.w || r.x + r.w < cr.x ||
-        r.y > cr.y + cr.h || r.y + r.h < cr.y do return .ALL;
+        r.y > cr.y + cr.h || r.y + r.h < cr.y do return .ALL
     if  r.x >= cr.x && r.x + r.w <= cr.x + cr.w &&
-        r.y >= cr.y && r.y + r.h <= cr.y + cr.h do return .PART;
-    return .PART;
+        r.y >= cr.y && r.y + r.h <= cr.y + cr.h do return .PART
+    return .PART
 } 
 
 get_current_container :: (ctx: &Context) -> ? &Container {
-    if ctx.container_stack.count == 0 do return .None;
-    return array.get(ctx.container_stack, -1);
+    if ctx.container_stack.count == 0 do return .None
+    return Array.get(ctx.container_stack, -1)
 }
 
 get_container :: (ctx: &Context, name: str) -> &Container {
-    id := get_id(ctx, name);
-    return _get_container(ctx, id, 0);
+    id := get_id(ctx, name)
+    return _get_container(ctx, id, 0)
 }
 
 bring_to_front :: (ctx: &Context, cnt: &Container) {
-    ctx.last_zindex += 1;
-    cnt.zindex = ctx.last_zindex;
+    ctx.last_zindex += 1
+    cnt.zindex = ctx.last_zindex
 }
 
 
@@ -137,7 +137,7 @@ bring_to_front :: (ctx: &Context, cnt: &Container) {
 
 
 #package {
-    unclipped_rect :: Rect.{0, 0, 0x1000000, 0x1000000};
+    unclipped_rect :: Rect.{0, 0, 0x1000000, 0x1000000}
 
     default_style :: () => Style.{
         null,
@@ -170,95 +170,95 @@ bring_to_front :: (ctx: &Context, cnt: &Container) {
 
     mu_hash :: (res: &Id, data: [] u8) {
         for d in data {
-            *res = (*res ^ ~~d) * 16777619;
+            *res = (*res ^ ~~d) * 16777619
         }
     }
 
     rect_overlaps_vec2 :: (r: Rect, v: Vec2) => 
-        r.x <= v.x && r.x + r.w >= v.x && r.y <= v.y && r.y + r.h >= v.y;
+        r.x <= v.x && r.x + r.w >= v.x && r.y <= v.y && r.y + r.h >= v.y
 
     expand_rect :: macro (r: Rect, n: i32) => Rect.{
         r.x - n, r.y - n, r.w + n * 2, r.h + n * 2
     }
 
     intersect_rects :: (r1, r2: Rect) => {
-        x1 := math.max(r1.x, r2.x);
-        y1 := math.max(r1.y, r2.y);
-        x2 := math.min(r1.x + r1.w, r2.x + r2.w);
-        y2 := math.min(r1.y + r1.h, r2.y + r2.h);
+        x1 := math.max(r1.x, r2.x)
+        y1 := math.max(r1.y, r2.y)
+        x2 := math.min(r1.x + r1.w, r2.x + r2.w)
+        y2 := math.min(r1.y + r1.h, r2.y + r2.h)
 
-        if x2 < x1 do x2 = x1;
-        if y2 < y1 do y2 = y1;
+        if x2 < x1 do x2 = x1
+        if y2 < y1 do y2 = y1
 
-        return Rect.{x1, y1, x2 - x1, y2 - y1};
+        return Rect.{x1, y1, x2 - x1, y2 - y1}
     }
 
     default_draw_frame :: (ctx: &Context, rect: Rect, colorid: COLOR) {
-        draw_rect(ctx, rect, ctx.style.colors[~~ colorid]);
+        draw_rect(ctx, rect, ctx.style.colors[~~ colorid])
 
-        if colorid == .SCROLLBASE || colorid == .SCROLLTHUMB || colorid == .TITLEBG do return;
+        if colorid == .SCROLLBASE || colorid == .SCROLLTHUMB || colorid == .TITLEBG do return
 
         if ctx.style.colors[~~ COLOR.BORDER].a != 0 {
-            draw_box(ctx, expand_rect(rect, 1), ctx.style.colors[~~ COLOR.BORDER]);
+            draw_box(ctx, expand_rect(rect, 1), ctx.style.colors[~~ COLOR.BORDER])
         }
     }
 
     push_layout :: (ctx: &Context, body: Rect, scroll: Vec2) {
-        layout := Layout.{};
-        layout.body = Rect.{body.x - scroll.x, body.y - scroll.y, body.w, body.h};
-        layout.max  = Vec2.{-0x1000000, -0x1000000};
-        array.push(&ctx.layout_stack, layout);
+        layout := Layout.{}
+        layout.body = Rect.{body.x - scroll.x, body.y - scroll.y, body.w, body.h}
+        layout.max  = Vec2.{-0x1000000, -0x1000000}
+        Array.push(&ctx.layout_stack, layout)
 
-        layout_row(ctx, .[-1], 0);
+        layout_row(ctx, .[-1], 0)
     }
 
     get_layout :: (ctx: &Context) -> &Layout {
-        return array.get_ptr(ctx.layout_stack, -1);
+        return Array.get_ptr(ctx.layout_stack, -1)
     }
 
     pop_container :: (ctx: &Context) {
-        cnt := get_current_container(ctx)->expect("Expected a container");
-        layout := get_layout(ctx);
+        cnt := get_current_container(ctx)->expect("Expected a container")
+        layout := get_layout(ctx)
 
-        cnt.content_size.x = layout.max.x - layout.body.x;
-        cnt.content_size.y = layout.max.y - layout.body.y;
+        cnt.content_size.x = layout.max.x - layout.body.x
+        cnt.content_size.y = layout.max.y - layout.body.y
 
-        array.pop(&ctx.container_stack);
-        array.pop(&ctx.layout_stack);
-        pop_id(ctx);
+        Array.pop(&ctx.container_stack)
+        Array.pop(&ctx.layout_stack)
+        pop_id(ctx)
     }
 
     _get_container :: (ctx: &Context, id: Id, opt: OPT) -> &Container {
-        idx := pool_get(ctx, ctx.container_pool, id);
+        idx := pool_get(ctx, ctx.container_pool, id)
         if idx >= 0 {
             if ctx.containers[idx].open || !(opt & .CLOSED) {
-                pool_update(ctx, ctx.container_pool, idx);
+                pool_update(ctx, ctx.container_pool, idx)
             }
-            return &ctx.containers[idx];
+            return &ctx.containers[idx]
         }
 
-        if opt & .CLOSED do return null;
+        if opt & .CLOSED do return null
 
-        idx  = pool_init(ctx, ctx.container_pool, id);
-        cnt := &ctx.containers[idx];
-        cnt.open = true;
-        bring_to_front(ctx, cnt);
-        return cnt;
+        idx  = pool_init(ctx, ctx.container_pool, id)
+        cnt := &ctx.containers[idx]
+        cnt.open = true
+        bring_to_front(ctx, cnt)
+        return cnt
     }
 
     push_jump :: (ctx: &Context, index: i32) -> i32 {
-        cmd, i := push_command(ctx);
-        cmd.* = .{ jump = .{ dst_index = index } };
-        return i;
+        cmd, i := push_command(ctx)
+        cmd.* = .{ jump = .{ dst_index = index } }
+        return i
     }
 
     in_hover_root :: (ctx: &Context) -> bool {
         for i in 0 .. ctx.container_stack.count {
-            if ctx.container_stack.data[ctx.container_stack.count - 1 - i] == ctx.hover_root do return true;
+            if ctx.container_stack.data[ctx.container_stack.count - 1 - i] == ctx.hover_root do return true
 
-            if ctx.container_stack.data[ctx.container_stack.count - 1 - i].head > 0 do break;
+            if ctx.container_stack.data[ctx.container_stack.count - 1 - i].head > 0 do break
         }
 
-        return false;
+        return false
     }
 }

@@ -3,78 +3,78 @@ package microui
 use core.string
 
 CLIP :: enum {
-    NONE :: 0;
-    PART :: 1;
-    ALL  :: 2;
+    NONE :: 0
+    PART :: 1
+    ALL  :: 2
 }
 
 COLOR :: enum {
-    TEXT;
-    BORDER;
-    WINDOWBG;
-    TITLEBG;
-    TITLETEXT;
-    PANELBG;
-    BUTTON;
-    BUTTONHOVER;
-    BUTTONFOCUS;
-    BASE;
-    BASEHOVER;
-    BASEFOCUS;
-    SCROLLBASE;
-    SCROLLTHUMB;
-    MAX;
+    TEXT
+    BORDER
+    WINDOWBG
+    TITLEBG
+    TITLETEXT
+    PANELBG
+    BUTTON
+    BUTTONHOVER
+    BUTTONFOCUS
+    BASE
+    BASEHOVER
+    BASEFOCUS
+    SCROLLBASE
+    SCROLLTHUMB
+    MAX
 }
 
 ICON :: enum {
-    NONE :: 0;
-    CLOSE :: 1;
-    CHECK :: 2;
-    COLLAPSED :: 3;
-    EXPANDED :: 4;
-    MAX :: 5;
+    NONE :: 0
+    CLOSE :: 1
+    CHECK :: 2
+    COLLAPSED :: 3
+    EXPANDED :: 4
+    MAX :: 5
 }
 
 RES :: enum #flags {
-    NONE   :: 0;
-    ACTIVE :: 1;
-    SUBMIT :: 2;
-    CHANGE :: 4;
+    NONE   :: 0
+    ACTIVE :: 1
+    SUBMIT :: 2
+    CHANGE :: 4
 }
 
 OPT :: enum #flags {
-    ALIGNCENTER;
-    ALIGNRIGHT;
-    NOINTERACT;
-    NOFRAME;
-    NORESIZE;
-    NOSCROLL;
-    NOCLOSE;
-    NOTITLE;
-    HOLDFOCUS;
-    AUTOSIZE;
-    POPUP;
-    CLOSED;
-    EXPANDED;
+    ALIGNCENTER
+    ALIGNRIGHT
+    NOINTERACT
+    NOFRAME
+    NORESIZE
+    NOSCROLL
+    NOCLOSE
+    NOTITLE
+    HOLDFOCUS
+    AUTOSIZE
+    POPUP
+    CLOSED
+    EXPANDED
 }
 
 MOUSE :: enum #flags {
-    LEFT;
-    RIGHT;
-    MIDDLE;
+    LEFT
+    RIGHT
+    MIDDLE
 }
 
 KEY :: enum #flags {
-    SHIFT;
-    CTRL;
-    ALT;
-    BACKSPACE;
-    RETURN;
+    SHIFT
+    CTRL
+    ALT
+    BACKSPACE
+    RETURN
 }
 
 Stack :: struct (T: type_expr, N: i32) {
-    idx: i32;
-    items: [N] T;
+    idx: i32
+    items: [N] T
 }
 
 Id :: u32
@@ -84,130 +84,130 @@ Font :: rawptr
 Vec2 :: struct {x, y: i32}
 
 Rect :: struct {
-    x, y, w, h: i32;
+    x, y, w, h: i32
 }
 
 Color :: struct {
-    r, g, b, a: u8;
+    r, g, b, a: u8
 }
 
 PoolItem :: struct {
-    id: Id;
-    last_update: i32;
+    id: Id
+    last_update: i32
 }
 
 JumpCommand :: struct {
-    dst_index: i32;
+    dst_index: i32
 }
 
 ClipCommand :: struct {
-    rect: Rect;
+    rect: Rect
 }
 
 RectCommand :: struct {
-    rect: Rect;
-    color: Color;
+    rect: Rect
+    color: Color
 }
 
 TextCommand :: struct {
-    font: Font;
-    pos: Vec2;
-    color: Color;
-    text: str;
+    font: Font
+    pos: Vec2
+    color: Color
+    text: str
 }
 
 IconCommand :: struct {
-    rect: Rect;
-    id: ICON;
-    color: Color;
+    rect: Rect
+    id: ICON
+    color: Color
 }
 
 Command :: union {
-    jump: JumpCommand;
-    clip: ClipCommand;
-    rect: RectCommand;
-    text: TextCommand;
-    icon: IconCommand;
+    jump: JumpCommand
+    clip: ClipCommand
+    rect: RectCommand
+    text: TextCommand
+    icon: IconCommand
 }
 
 Layout :: struct {
-    body: Rect;
-    next: Rect;
-    position: Vec2;
-    size: Vec2;
-    max: Vec2;
-    widths: [MAX_WIDTHS] i32;
-    items: i32;
-    item_index: i32;
-    next_row: i32;
-    next_type: Type;
-    indent: i32;
+    body: Rect
+    next: Rect
+    position: Vec2
+    size: Vec2
+    max: Vec2
+    widths: [MAX_WIDTHS] i32
+    items: i32
+    item_index: i32
+    next_row: i32
+    next_type: Type
+    indent: i32
 
     Type :: enum { None; Relative; Absolute; }
 }
 
 Container :: struct {
-    head, tail: i32;
-    rect: Rect;
-    body: Rect;
-    content_size: Vec2;
-    scroll: Vec2;
-    zindex: i32;
-    open: bool;
+    head, tail: i32
+    rect: Rect
+    body: Rect
+    content_size: Vec2
+    scroll: Vec2
+    zindex: i32
+    open: bool
 }
 
 Style :: struct {
-    font: Font;
-    size: Vec2;
-    padding: i32;
-    spacing: i32;
-    indent: i32;
-    title_height: i32;
-    scrollbar_size: i32;
-    thumb_size: i32;
-    colors: [cast(i32) COLOR.MAX] Color;
+    font: Font
+    size: Vec2
+    padding: i32
+    spacing: i32
+    indent: i32
+    title_height: i32
+    scrollbar_size: i32
+    thumb_size: i32
+    colors: [cast(i32) COLOR.MAX] Color
 }
 
 Context :: struct {
-    text_width: (font: Font, s: str) -> i32;
-    text_height: (font: Font) -> i32;
-    draw_frame: (ctx: &Context, rect: Rect, colorid: COLOR) -> void;
+    text_width: (font: Font, s: str) -> i32
+    text_height: (font: Font) -> i32
+    draw_frame: (ctx: &Context, rect: Rect, colorid: COLOR) -> void
 
-    style: Style;
+    style: Style
 
-    hover: Id;
-    focus: Id;
-    last_id: Id;
-    last_rect: Rect;
-    last_zindex: i32;
-    updated_focus: bool;
-    frame: i32;
-    hover_root: &Container;
-    next_hover_root: &Container;
-    scroll_target: &Container;
-    number_edit_buf: dyn_str;
-    number_edit: Id;
+    hover: Id
+    focus: Id
+    last_id: Id
+    last_rect: Rect
+    last_zindex: i32
+    updated_focus: bool
+    frame: i32
+    hover_root: &Container
+    next_hover_root: &Container
+    scroll_target: &Container
+    number_edit_buf: dyn_str
+    number_edit: Id
 
-    command_list:    [..] Command;
-    root_list:       [..] &Container;
-    container_stack: [..] &Container;
-    clip_stack:      [..] Rect;
-    id_stack:        [..] Id;
-    layout_stack:    [..] Layout;
+    command_list:    [..] Command
+    root_list:       [..] &Container
+    container_stack: [..] &Container
+    clip_stack:      [..] Rect
+    id_stack:        [..] Id
+    layout_stack:    [..] Layout
 
-    container_pool:  [CONTAINERPOOL_SIZE] PoolItem;
-    containers:      [CONTAINERPOOL_SIZE] Container;
-    treenode_pool:   [TREENODEPOOL_SIZE]  PoolItem;
+    container_pool:  [CONTAINERPOOL_SIZE] PoolItem
+    containers:      [CONTAINERPOOL_SIZE] Container
+    treenode_pool:   [TREENODEPOOL_SIZE]  PoolItem
 
-    mouse_pos: Vec2;
-    last_mouse_pos: Vec2;
-    mouse_delta: Vec2;
-    scroll_delta: Vec2;
-    mouse_down: MOUSE;
-    mouse_pressed: MOUSE;
-    key_down: KEY;
-    key_pressed: KEY;
-    input_text: dyn_str;
+    mouse_pos: Vec2
+    last_mouse_pos: Vec2
+    mouse_delta: Vec2
+    scroll_delta: Vec2
+    mouse_down: MOUSE
+    mouse_pressed: MOUSE
+    key_down: KEY
+    key_pressed: KEY
+    input_text: dyn_str
 
-    text_pool: string.StringPool;
+    text_pool: string.StringPool
 }
