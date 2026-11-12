@@ -29,4 +29,4 @@ package microui
 ** IN THE SOFTWARE.
 */
 
-#load_all "./src"
+#load "./src"

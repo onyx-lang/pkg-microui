@@ -2,11 +2,12 @@ package microui
 
 use runtime
 use core {*}
+use core.string {StringPool}
 
 init :: (ctx: &Context) {
     ctx.draw_frame = default_draw_frame
     ctx.style = default_style()
-    ctx.text_pool = string.pool_make(512, context.allocator)
+    ctx.text_pool = StringPool.make(512, context.allocator)
 }
 
 begin :: (ctx: &Context) {
@@ -14,7 +15,7 @@ begin :: (ctx: &Context) {
     Array.clear(&ctx.command_list)
     Array.clear(&ctx.clip_stack)
     Array.clear(&ctx.root_list)
-    string.pool_flush(&ctx.text_pool)
+    StringPool.flush(&ctx.text_pool)
     ctx.scroll_target = null
     ctx.hover_root = ctx.next_hover_root
     ctx.next_hover_root = null
