@@ -18,7 +18,7 @@ main :: () {
     raylib.GetFontDefault(&font)
 
     ctx.text_width = (_, msg) use (font) => {
-        m := string.to_cstr_on_stack(msg)
+        m := str.to_cstr_on_stack(msg)
         v: raylib.Vector2
         raylib.MeasureTextEx(font, m, 20, 2, &v)
         return cast(i32) v.x
@@ -129,7 +129,7 @@ main :: () {
                 }
 
                 case .text as &t {
-                    raylib.DrawText(string.to_cstr_on_stack(t.text), t.pos.x, t.pos.y, 20, *cast(&raylib.Color) &t.color)
+                    raylib.DrawText(str.to_cstr_on_stack(t.text), t.pos.x, t.pos.y, 20, *cast(&raylib.Color) &t.color)
                 }
 
                 case .icon as &i {
@@ -141,7 +141,7 @@ main :: () {
                     raylib.BeginScissorMode(c.rect.x, c.rect.y, c.rect.w, c.rect.h)
                 }
 
-                case #default {}
+                case _ {}
             }
         }
     }
